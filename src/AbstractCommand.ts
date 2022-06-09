@@ -108,6 +108,9 @@ export abstract class AbstractCommand {
     const { commands, permissions: cmdPermissions } = descriptor;
 
     this.optionsValid = await this._assignOptions(options, props);
+    if (!this.optionsValid) {
+      this.logVerbose("Options are invalid");
+    }
 
     if (this.showHelp && !remainingPath.length) {
       _showHelp({
@@ -208,6 +211,11 @@ export abstract class AbstractCommand {
   protected async _checkPermission(permission?: Permission, count = 0) {
     if (!permission) return;
     if (count > 2) {
+      const { name: _name, ...rest} = permission;
+      const label = Object.keys(rest)[0];
+
+      this.logVerbose(`Exiting due to permission denial for "${permission.name}" to "${permission[label as keyof Permission]}".`);
+
       Deno.exit(5);
     }
     const perm = typeof permission === "function"
@@ -236,10 +244,12 @@ export abstract class AbstractCommand {
     await permissions.forEach(this._checkPermission);
   }
 
-  protected _getValueFromEnv(env: string | string[]): string | undefined {
+  protected async _getValueFromEnv(env: string | string[]): Promise<string | undefined> {
     if (Array.isArray(env)) {
       return env.find((e) => this._getValueFromEnv(e));
     }
+
+    await this._checkPermission({name: "env", variable: env});
 
     return Deno.env.get(env);
   }
@@ -307,13 +317,10 @@ export abstract class AbstractCommand {
     const { commands } = descriptor;
     const [nextPath] = path;
     const noFuzzySearch = arguments.length && commands?.length;
-
-    //  run through args list for matching against remainings args;
+    
     const matchingArgs = argsLists.find((args) => this._checkArgs(args, path));
 
     if (matchingArgs) return matchingArgs;
-
-    //  run through subcommands
     const matchingCommands = commands?.filter((cmd) => {
       const desc = _cmdMap.descriptor.get(cmd);
       if (noFuzzySearch) {
