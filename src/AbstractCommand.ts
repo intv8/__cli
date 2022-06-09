@@ -241,7 +241,7 @@ export abstract class AbstractCommand {
   }
 
   protected async _checkPermissions(permissions: Permission[]) {
-    await permissions.forEach(this._checkPermission);
+    await permissions.forEach(p => this._checkPermission(p));
   }
 
   protected async _getValueFromEnv(env: string | string[]): Promise<string | undefined> {
