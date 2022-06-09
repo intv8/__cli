@@ -164,15 +164,17 @@ export abstract class AbstractCommand {
         });
       }
 
-      const { target } = next;
+      const { target, permissions: argPermissions } = next;
+      await this._checkPermissions([...permissions || [], ...cmdPermissions || [], ...argPermissions || []]);
       const call = this[target as keyof this];
 
       if (typeof call === "function") {
         return await call.apply(this, remainingPath);
       }
     } else {
-      const { target } = next;
+      const { target, permissions: handlerPermissions } = next;
       const call = this[target as keyof this];
+      await this._checkPermissions([...permissions || [], ...cmdPermissions || [], ...handlerPermissions || []]);
       if (this.showHelp) {
         _showHelp({
           cli: cli.config,
